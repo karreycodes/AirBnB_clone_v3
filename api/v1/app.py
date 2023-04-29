@@ -1,50 +1,31 @@
 #!/usr/bin/python3
-"""
-    app.py to connect to API. app entry point
-"""
 
-import os
-from models import storage
+"""flask main application script"""
+
 from api.v1.views import app_views
 from flask import Flask
-from flask_cors import CORS, cross_origin
-from flasgger import Swagger
-from werkzeug.exceptions import HTTPException
+from flask import jsonify
+from os import getenv
+from models import storage
+
 
 app = Flask(__name__)
-swagger = Swagger(app)
-app.register_blueprint(app_views)
-app.url_map.strict_slashes = False
-
-cors = CORS(app, resources={
-            r'/*': {'origins': os.getenv('HBNB_API_HOST', '0.0.0.0')}})
 app.register_blueprint(app_views)
 
 
 @app.teardown_appcontext
-def teardown(code):
-    """
-    teardown_appcontext method that closes the storage
-    """
+def clean_up(exception=None):
+    """close current session on database"""
     storage.close()
 
 
 @app.errorhandler(404)
-def page_404_not_found(e):
-    """method for 404 errors.
-    """
-    return ({'error': 'Not found'}), 404
-
-
-def setup_global_errors():
-    """
-    Updates HTTPException Class with custom error function
-    """
-    for cls in HTTPException.__subclasses__():
-        app.register_error_handler(cls, global_error_handler)
+def not_found_error(error):
+    """handles 404 error"""
+    return jsonify({"error": "Not found"}), 404
 
 
 if __name__ == "__main__":
-    app.run(host=os.getenv('HBNB_API_HOST', '0.0.0.0'),
-            port=int(os.getenv('HBNB_API_PORT', '5000')),
-            threaded=True)
+    host = getenv('HBNB_API_HOST', default='0.0.0.0')
+    port = getenv('HBNB_API_PORT', default=5000)
+    app.run(host, int(port), threaded=True)
